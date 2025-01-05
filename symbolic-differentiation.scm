@@ -31,7 +31,7 @@
 (define (multiplier exp) (cadr exp))
 (define (multiplicand exp) (caddr exp))
 
-;; Define a constructure, predicate and selectors for exponentiation expressions
+;; Define a constructor, predicate and selectors for exponentiation expressions
 (define (make-exponentiation base exponent)
   (cond ((=number? exponent 0) 1)
         ((=number? exponent 1) base)
@@ -42,6 +42,36 @@
   (and (pair? exp) (eq? (car exp) '**)))
 (define (base exp) (cadr exp))
 (define (exponent exp) (caddr exp))
+
+;; Define a constructor, predicate and selectors for quotient expressions
+(define (make-quotient n d)
+  (cond ((=number? n 0) 0)
+        ((=number? d 1) n)
+        ((and (number? n) (number? d)) (/ n d))
+        ((equal? n d) 1)
+        (else (list '/ n d))))
+(define (quotient? exp)
+  (and (pair? exp) (eq? (car exp) '/)))
+(define (numerator exp) (cadr exp))
+(define (denominator exp) (caddr exp))
+
+;; Define a constructor, predicate and selectors for sin expressions
+(define (make-sine x)
+  (cond ((=number? x 0) 0)
+        ((number? x) (sin x))
+        (else (list 'sin x))))
+(define (sine? exp)
+  (and (pair? exp) (eq? (car exp) 'sin)))
+(define (sine-arg exp) (cadr exp))
+
+;; Define a constructor, predicate and selectors for cos expressions
+(define (make-cosine x)
+  (cond ((=number? x 0) 1)
+        ((number? x) (cos x))
+        (else (list 'cos x))))
+(define (cosine? exp)
+  (and (pair? exp) (eq? (car exp) 'cos)))
+(define (cosine-arg exp) (cadr exp))
 
 ;; Define the core differentiation procedure
 (define (deriv exp var)
@@ -64,4 +94,21 @@
              (make-exponentiation (base exp)
                                  (make-sum (exponent exp) -1)))
            (deriv (base exp) var)))
-        (else (error "Unknown expression type" exp))))
+        ((quotient? exp)
+         (make-quotient
+           (make-sum
+             (make-product (deriv (numerator exp) var)
+                          (denominator exp))
+             (make-product (make-product -1 (numerator exp))
+                          (deriv (denominator exp) var)))
+           (make-power (denominator exp) 2)))
+        ((sine? exp)
+         (make-product
+           (make-cosine (sine-arg exp))
+           (deriv (sine-arg exp) var)))
+        ((cosine? exp)
+         (make-product -1
+           (make-product
+             (make-sine (cosine-arg exp))
+             (deriv (cosine-arg exp) var))))
+        (else (error "unknown expression type" exp))))
